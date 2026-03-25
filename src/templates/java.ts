@@ -18,6 +18,10 @@ export function javaTemplates(a: Answers): Record<string, string> {
     // ── Java sources ──────────────────────────────────────────────────────────
     [`src/main/java/${pkgPath}/${className}Plugin.java`]:   pluginClass(a, className),
     [`src/main/java/${pkgPath}/${className}Ingestor.java`]: ingestorClass(a, className),
+
+    // ── CI / ingestor scripts ─────────────────────────────────────────────────
+    'scripts/ingest.sh': ingestScript(a),
+    'scripts/upload-plugin.sh': uploadPluginScript(a),
   };
 }
 
@@ -213,5 +217,77 @@ function gradlewBat(): string {
   return `@rem Run: gradle wrapper  — to generate the real Gradle wrapper files
 @rem Or install Gradle and run: gradle <task>
 @gradle %*
+`;
+}
+
+function ingestScript(a: Answers): string {
+  return `#!/usr/bin/env bash
+# Ingest a JSON file into OmniFlow as type "${a.ingestorType}".
+#
+# Usage:
+#   ./scripts/ingest.sh data.json
+#   ./scripts/ingest.sh data.json https://omniflow.example.com
+#
+# Set OMNIFLOW_API_KEY in your environment or CI secrets.
+
+set -euo pipefail
+
+FILE=\${1:?Usage: $0 <data.json> [api-url]}
+API_URL=\${2:-${a.apiUrl}}
+API_KEY=\${OMNIFLOW_API_KEY:?Set OMNIFLOW_API_KEY environment variable}
+
+echo "Ingesting \${FILE} as type '${a.ingestorType}'..."
+
+HTTP_STATUS=$(curl -s -o /tmp/ingest_response.json -w "%{http_code}" \\
+  -X POST "\${API_URL}/api/ingest/${a.ingestorType}" \\
+  -H "X-Api-Key: \${API_KEY}" \\
+  -H "Content-Type: application/json" \\
+  --data-binary "@\${FILE}")
+
+if [ "\${HTTP_STATUS}" -ge 200 ] && [ "\${HTTP_STATUS}" -lt 300 ]; then
+  echo "Success (\${HTTP_STATUS}):"
+  cat /tmp/ingest_response.json
+else
+  echo "Failed (\${HTTP_STATUS}):"
+  cat /tmp/ingest_response.json
+  exit 1
+fi
+`;
+}
+
+function uploadPluginScript(a: Answers): string {
+  return `#!/usr/bin/env bash
+# Build and upload the plugin JAR to a running OmniFlow backend.
+#
+# Usage:
+#   ./scripts/upload-plugin.sh
+#   ./scripts/upload-plugin.sh https://omniflow.example.com
+#
+# Set OMNIFLOW_API_KEY in your environment or CI secrets.
+
+set -euo pipefail
+
+API_URL=\${1:-${a.apiUrl}}
+API_KEY=\${OMNIFLOW_API_KEY:?Set OMNIFLOW_API_KEY environment variable}
+JAR="build/libs/${a.pluginId}-1.0.0.jar"
+
+echo "Building JAR..."
+./gradlew jar
+
+echo "Uploading \${JAR} to \${API_URL}..."
+
+HTTP_STATUS=$(curl -s -o /tmp/upload_response.json -w "%{http_code}" \\
+  -X POST "\${API_URL}/api/plugins/upload" \\
+  -H "X-Api-Key: \${API_KEY}" \\
+  -F "file=@\${JAR}")
+
+if [ "\${HTTP_STATUS}" -ge 200 ] && [ "\${HTTP_STATUS}" -lt 300 ]; then
+  echo "Plugin uploaded successfully (\${HTTP_STATUS}):"
+  cat /tmp/upload_response.json
+else
+  echo "Upload failed (\${HTTP_STATUS}):"
+  cat /tmp/upload_response.json
+  exit 1
+fi
 `;
 }

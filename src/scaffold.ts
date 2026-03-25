@@ -29,10 +29,10 @@ export async function scaffold(answers: Answers): Promise<string> {
     fs.writeFileSync(abs, content, 'utf8');
   }
 
-  // Make gradlew executable
-  const gradlew = path.join(outDir, 'gradlew');
-  if (fs.existsSync(gradlew)) {
-    fs.chmodSync(gradlew, 0o755);
+  // Make shell scripts executable
+  for (const script of ['gradlew', 'scripts/ingest.sh', 'scripts/upload-plugin.sh']) {
+    const abs = path.join(outDir, script);
+    if (fs.existsSync(abs)) fs.chmodSync(abs, 0o755);
   }
 
   return answers.pluginId;

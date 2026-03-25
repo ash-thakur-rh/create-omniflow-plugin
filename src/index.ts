@@ -96,8 +96,14 @@ async function main() {
       '',
       '# Upload to a running OmniFlow backend:',
       `curl -X POST ${answers.apiUrl}/api/plugins/upload \\`,
-      `  -b "JSESSIONID=<your-session>" \\`,
+      `  -H "X-Api-Key: <your-api-key>" \\`,
       `  -F "file=@build/libs/${answers.pluginId}-1.0.0.jar"`,
+      '',
+      '# Ingest data (see scripts/ingest.sh for a ready-made script):',
+      `curl -X POST ${answers.apiUrl}/api/ingest/${answers.ingestorType} \\`,
+      `  -H "X-Api-Key: <your-api-key>" \\`,
+      `  -H "Content-Type: application/json" \\`,
+      `  -d @data.json`,
       ...(hasUi
         ? ['', '# Dev UI standalone (no JAR needed):', 'cd ui && npm install && npm run dev']
         : []),
