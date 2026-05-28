@@ -2,7 +2,7 @@
 
 Interactive CLI scaffolder for [OmniFlow](https://github.com/agnistack/omniflow) plugins.
 
-Generates a ready-to-build Gradle project with a Java ingestor, optional Next.js micro UI, and all the wiring needed to upload the plugin as a JAR to a running OmniFlow backend.
+Generates a ready-to-build Gradle project with a Java ingestor, optional AI tools (exposed to OmniFlow AI chat), optional webhook action, optional Next.js micro UI, and all the wiring needed to upload the plugin as a JAR to a running OmniFlow backend.
 
 ## Usage
 
@@ -30,9 +30,11 @@ The CLI will ask a few questions and scaffold a new directory named after your p
 | Description | Short description of what the plugin ingests |
 | Author | Your name or organisation |
 | Java base package | Root Java package (e.g. `io.github.acme.plugins.myingestor`) |
-| Ingestor type key | Used in API paths — `/api/ingest/{type}` |
+| Ingestor type key | Used in API paths — `/api/v1/ingest/{type}` |
+| Include AI tool? | Scaffold a `PluginTool` that exposes data to OmniFlow AI chat |
+| Include webhook action? | Scaffold a `PluginAction` dispatched from OmniFlow scripts |
 | Include Next.js UI? | Whether to scaffold a micro frontend |
-| OmniFlow plugin-api version | Version of `omniflow-plugin-api` to depend on |
+| OmniFlow plugin-api version | Version of `omniflow-plugin-api` to depend on (default: `0.1`) |
 | OmniFlow API base URL | Backend URL for local UI dev (e.g. `http://localhost:8080`) |
 
 ## What gets generated
@@ -43,9 +45,14 @@ The CLI will ask a few questions and scaffold a new directory named after your p
 ├── settings.gradle
 ├── gradlew / gradlew.bat # Wrapper stubs (run `gradle wrapper` for the real ones)
 ├── src/main/java/…/
-│   ├── <Name>Plugin.java     # OmniflowPlugin implementation
-│   └── <Name>Ingestor.java   # PluginIngestor implementation
-└── ui/                   # Only when "Include Next.js UI?" = yes
+│   ├── <Name>Plugin.java          # OmniflowPlugin implementation
+│   ├── <Name>Ingestor.java        # PluginIngestor implementation
+│   ├── <Name>WebhookAction.java   # Only when "Include webhook action?" = yes
+│   └── tools/
+│       └── <Name>QueryTool.java   # Only when "Include AI tool?" = yes
+├── src/main/resources/
+│   └── META-INF/services/…        # ServiceLoader descriptor (auto-generated)
+└── ui/                            # Only when "Include Next.js UI?" = yes
     ├── package.json
     ├── tsconfig.json
     ├── next.config.ts
@@ -89,7 +96,7 @@ To skip the UI build during development:
 ## Upload to OmniFlow
 
 ```sh
-curl -X POST http://localhost:8080/api/plugins/upload \
+curl -X POST http://localhost:8080/api/v1/plugins/upload \
   -b "JSESSIONID=<your-session>" \
   -F "file=@build/libs/<plugin-id>-1.0.0.jar"
 ```
@@ -107,6 +114,31 @@ npm run dev        # starts on http://localhost:3000
 ```
 
 The `NEXT_PUBLIC_API_URL` variable in `.env.local` controls which OmniFlow backend the UI talks to.
+
+## AI tools
+
+When you include an AI tool, the scaffolder generates a `PluginTool` implementation that the OmniFlow AI agent can invoke. Tool names are automatically namespaced as `{pluginId}__{name}` to prevent clashes.
+
+After installing the plugin, users can ask the AI agent questions about the ingested data — the agent calls your tool behind the scenes:
+
+```
+User:  "Show me the most recent records from my-plugin"
+Agent: [calls my-plugin__query-records with limit=5]
+```
+
+The generated tool uses `PluginContext.queryRecords()` to fetch data from the host database — no in-memory state required. Customize the `getInputSchema()` and `execute()` methods to add filters, aggregations, or any query logic specific to your data.
+
+See the [deploy-tracker example plugin](https://github.com/ash-thakur-rh/omniflow/tree/main/example-plugins/deploy-tracker) for a full example with multiple AI tools.
+
+## Webhook action
+
+When you include a webhook action, the scaffolder generates a `PluginAction` that posts notifications to a configurable webhook URL. Set the environment variable (e.g. `MY_PLUGIN_WEBHOOK_URL`) to your Slack, Teams, or custom endpoint.
+
+Trigger it from an OmniFlow script:
+
+```
+context.dispatch("my-plugin-notify", "Deploy Complete", "v2.3.1 is live", metadata)
+```
 
 ---
 

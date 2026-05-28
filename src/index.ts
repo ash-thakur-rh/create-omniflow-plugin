@@ -17,7 +17,7 @@ async function main() {
         p.text({
           message: 'Plugin ID',
           placeholder: 'my-ingestor',
-          validate: v =>
+          validate: (v = '') =>
             /^[a-z][a-z0-9-]*$/.test(v)
               ? undefined
               : 'Use lowercase letters, numbers and hyphens only',
@@ -53,6 +53,18 @@ async function main() {
           initialValue: results.pluginId,
         }),
 
+      hasTools: () =>
+        p.confirm({
+          message: 'Include an AI tool?  (exposes data to OmniFlow AI chat)',
+          initialValue: false,
+        }),
+
+      hasAction: () =>
+        p.confirm({
+          message: 'Include a webhook action?  (dispatched from OmniFlow scripts)',
+          initialValue: false,
+        }),
+
       hasUi: () =>
         p.confirm({
           message: 'Include a Next.js micro UI?',
@@ -62,7 +74,7 @@ async function main() {
       omniflowVersion: () =>
         p.text({
           message: 'OmniFlow plugin-api version to depend on',
-          initialValue: '1.0.0',
+          initialValue: '0.1',
         }),
 
       apiUrl: () =>
@@ -95,12 +107,12 @@ async function main() {
       `./gradlew jar`,
       '',
       '# Upload to a running OmniFlow backend:',
-      `curl -X POST ${answers.apiUrl}/api/plugins/upload \\`,
+      `curl -X POST ${answers.apiUrl}/api/v1/plugins/upload \\`,
       `  -H "X-Api-Key: <your-api-key>" \\`,
       `  -F "file=@build/libs/${answers.pluginId}-1.0.0.jar"`,
       '',
       '# Ingest data (see scripts/ingest.sh for a ready-made script):',
-      `curl -X POST ${answers.apiUrl}/api/ingest/${answers.ingestorType} \\`,
+      `curl -X POST ${answers.apiUrl}/api/v1/ingest/${answers.ingestorType} \\`,
       `  -H "X-Api-Key: <your-api-key>" \\`,
       `  -H "Content-Type: application/json" \\`,
       `  -d @data.json`,

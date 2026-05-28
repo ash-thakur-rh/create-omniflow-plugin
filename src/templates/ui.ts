@@ -32,26 +32,28 @@ function uiPackageJson(a: Answers): string {
         lint: 'next lint',
       },
       dependencies: {
-        '@omniflow/ui': 'latest',
-        next: '16.2.1',
-        react: '19.2.4',
-        'react-dom': '19.2.4',
-        swr: '^2.3.3',
+        '@agnistack/omniflow-ui': '0.1.4',
+        next: '16.2.6',
+        react: '19.2.6',
+        'react-dom': '19.2.6',
+        swr: '2.4.1',
       },
       devDependencies: {
-        '@types/node': '^22',
+        '@types/node': '22.19.19',
         '@types/react': '19.2.14',
         '@types/react-dom': '19.2.3',
-        autoprefixer: '^10.4.21',
-        eslint: '^9.39.4',
-        'eslint-config-next': '^16.2.1',
-        postcss: '^8.5.3',
-        tailwindcss: '^3.4.17',
-        typescript: '^5',
+        autoprefixer: '10.5.0',
+        eslint: '9.39.4',
+        'eslint-config-next': '16.2.6',
+        postcss: '8.5.14',
+        tailwindcss: '3.4.19',
+        typescript: '5.9.3',
       },
       overrides: {
         '@types/react': '19.2.14',
         '@types/react-dom': '19.2.3',
+        next: '$next',
+        postcss: '8.5.14',
       },
     },
     null,
@@ -93,11 +95,11 @@ function uiNextConfig(a: Answers): string {
 const forJar = process.env.NEXT_BUILD_FOR_JAR === '1';
 
 const config: NextConfig = {
-  transpilePackages: ['@omniflow/ui'],
+  transpilePackages: ['@agnistack/omniflow-ui'],
   output: 'export',
-  // basePath and assetPrefix match the host's /api/plugins/{id}/ui/** route.
-  basePath:    forJar ? '/api/plugins/${a.pluginId}/ui' : '',
-  assetPrefix: forJar ? '/api/plugins/${a.pluginId}/ui' : '',
+  // basePath and assetPrefix match the host's /api/v1/plugins/{id}/ui/** route.
+  basePath:    forJar ? '/api/v1/plugins/${a.pluginId}/ui' : '',
+  assetPrefix: forJar ? '/api/v1/plugins/${a.pluginId}/ui' : '',
   images: { unoptimized: true },
   trailingSlash: false,
 };
@@ -114,7 +116,7 @@ const config: Config = {
     './app/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
     './lib/**/*.{ts,tsx}',
-    './node_modules/@omniflow/ui/src/**/*.{ts,tsx}',
+    './node_modules/@agnistack/omniflow-ui/src/**/*.{ts,tsx}',
   ],
   darkMode: 'class',
   theme: { extend: {} },
@@ -174,8 +176,10 @@ body {
 
 function uiLayout(a: Answers): string {
   return `import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import './globals.css';
 import ThemeSync from '@/components/ThemeSync';
+import { FilterProvider, FilterBar } from '@agnistack/omniflow-ui';
 
 export const metadata: Metadata = { title: '${a.pluginName} — OmniFlow' };
 
@@ -191,7 +195,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <span className="text-sm font-bold text-gray-900 dark:text-slate-100">${a.pluginName}</span>
           <span className="text-xs bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-900 px-2 py-0.5 rounded-full">OmniFlow Plugin</span>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <FilterProvider defaultLimit="50">
+          <Suspense><FilterBar apiType="${a.ingestorType}" defaultLimit="50" limitOptions={[{ value: '20', label: 'Last 20' }, { value: '50', label: 'Last 50' }, { value: '100', label: 'Last 100' }]} statusOptions={[{ value: 'SUCCESS', label: 'Success' }, { value: 'FAILED', label: 'Failed' }]} /></Suspense>
+          <main className="flex-1 p-6">{children}</main>
+        </FilterProvider>
       </body>
     </html>
   );
@@ -203,7 +210,7 @@ function uiPage(a: Answers): string {
   return `'use client';
 
 import useSWR from 'swr';
-import { EmptyState, cls } from '@omniflow/ui';
+import { EmptyState, cls } from '@agnistack/omniflow-ui';
 import { fetchRecords, type PluginRecord } from '@/lib/api';
 
 export default function HomePage() {
@@ -217,7 +224,7 @@ export default function HomePage() {
   if (!records?.length) return (
     <EmptyState
       title="No ${a.pluginName} data ingested yet."
-      description="POST data to /api/ingest/${a.ingestorType} to get started."
+      description="POST data to /api/v1/ingest/${a.ingestorType} to get started."
     />
   );
 
@@ -275,7 +282,7 @@ export default function ThemeSync() {
 
 function uiApi(a: Answers): string {
   return `// The OmniFlow backend URL. Defaults to same origin in production (assets
-// are served by the OmniFlow host at /api/plugins/${a.pluginId}/ui).
+// are served by the OmniFlow host at /api/v1/plugins/${a.pluginId}/ui).
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 async function get<T>(path: string): Promise<T> {
@@ -301,6 +308,6 @@ export interface PluginRecord {
 // ── API calls ──────────────────────────────────────────────────────────────
 
 export const fetchRecords = (limit = 50) =>
-  get<PluginRecord[]>(\`/api/analytics/builds?type=${a.ingestorType}&limit=\${limit}\`);
+  get<PluginRecord[]>(\`/api/v1/analytics/builds?type=${a.ingestorType}&limit=\${limit}\`);
 `;
 }

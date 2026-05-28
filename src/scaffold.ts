@@ -10,6 +10,8 @@ export interface Answers {
   author: string;
   javaPackage: string;
   ingestorType: string;
+  hasTools: boolean;
+  hasAction: boolean;
   hasUi: boolean;
   omniflowVersion: string;
   apiUrl: string;
