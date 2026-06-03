@@ -18,7 +18,7 @@
     "picocolors": "1.1.1"
   },
   "devDependencies": {
-    "@types/node": "22.19.15",
+    "@types/node": "25.9.1",
     "tsup": "8.5.1",
     "typescript": "5.9.3"
   },
