@@ -184,14 +184,36 @@ create-omniflow-plugin
 
 ## Publish to npm
 
-1. Bump the version in `package.json`.
-2. Build:
+### One-time setup
+
+1. Create an npm account at [npmjs.com/signup](https://www.npmjs.com/signup) if you don't have one.
+2. Log in from your terminal:
    ```sh
-   npm run build
-   ```
-3. Publish:
-   ```sh
-   npm publish --access public
+   npm login
    ```
 
+### Publish a release
+
+```sh
+# Build
+npm run build
+
+# Publish (first time — public by default for unscoped packages)
+npm publish
+```
+
+The package will be live at [npmjs.com/package/create-omniflow-plugin](https://www.npmjs.com/package/create-omniflow-plugin) and users can run `npx create-omniflow-plugin`.
+
 The `files` field in `package.json` ensures only `dist/` is included in the published package.
+
+### Future releases
+
+```sh
+# Bump version (patch/minor/major)
+npm version patch   # 0.3.0 → 0.3.1
+npm version minor   # 0.3.0 → 0.4.0
+npm version major   # 0.3.0 → 1.0.0
+
+# Build and publish
+npm run build && npm publish
+```
